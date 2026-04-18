@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Intermission · Control</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+</style>
+</head>
+<body class="bg-stone-900 text-stone-100 min-h-screen p-4 pb-24">
+<div class="max-w-md mx-auto space-y-5">
+
+  <header class="flex items-center justify-between pt-2">
+    <h1 class="text-2xl font-serif italic">Intermission</h1>
+    <span id="status" class="text-xs text-stone-500">—</span>
+  </header>
+
+  <!-- Custom text -->
+  <section class="space-y-2">
+    <label class="text-xs uppercase tracking-wide text-stone-400">Custom text</label>
+    <input id="textInput" type="text" maxlength="40" autocomplete="off" autocapitalize="characters"
+           placeholder="3 more bites"
+           class="w-full bg-stone-800 text-stone-100 text-lg rounded-xl px-4 py-4 border border-stone-700 focus:border-amber-500 focus:outline-none">
+    <button id="sendText" class="w-full bg-amber-500 text-stone-900 font-semibold text-lg py-4 rounded-xl active:scale-95 transition">
+      Send to TV
+    </button>
+  </section>
+
+  <!-- Preset scenes -->
+  <section class="space-y-2">
+    <label class="text-xs uppercase tracking-wide text-stone-400">Presets</label>
+    <div id="presets" class="grid grid-cols-2 gap-3"></div>
+  </section>
+
+  <!-- Countdown -->
+  <section class="space-y-2">
+    <label class="text-xs uppercase tracking-wide text-stone-400">Countdown</label>
+    <div class="grid grid-cols-4 gap-2">
+      <button data-seconds="30"  class="countdown-btn bg-stone-800 border border-stone-700 text-stone-100 font-semibold py-4 rounded-xl active:scale-95 transition">30s</button>
+      <button data-seconds="60"  class="countdown-btn bg-stone-800 border border-stone-700 text-stone-100 font-semibold py-4 rounded-xl active:scale-95 transition">1m</button>
+      <button data-seconds="120" class="countdown-btn bg-stone-800 border border-stone-700 text-stone-100 font-semibold py-4 rounded-xl active:scale-95 transition">2m</button>
+      <button data-seconds="300" class="countdown-btn bg-stone-800 border border-stone-700 text-stone-100 font-semibold py-4 rounded-xl active:scale-95 transition">5m</button>
+    </div>
+  </section>
+
+  <!-- Clear -->
+  <section class="pt-2">
+    <button id="clear" class="w-full bg-stone-950 border-2 border-stone-700 text-stone-300 font-semibold text-lg py-5 rounded-xl active:scale-95 transition">
+      ● Clear (black screen)
+    </button>
+  </section>
+
+  <p class="text-center text-stone-600 text-xs pt-4">TV updates in &lt;1s · Tap text to reuse</p>
+</div>
+
+<script>
+const PRESETS = [
+  "3 MORE BITES",
+  "EYES UP",
+  "SHOES ON",
+  "CLEAN UP",
+  "DANCE BREAK",
+  "TEETH TIME",
+  "ALL DONE",
+  "PAUSE"
+];
+
+const statusEl = document.getElementById("status");
+const textInput = document.getElementById("textInput");
+
+async function push(mode, payload) {
+  statusEl.textContent = "sending…";
+  try {
+    const r = await fetch("/api/state", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ mode, payload })
+    });
+    if (r.ok) {
+      statusEl.textContent = "✓ on TV";
+      setTimeout(() => { statusEl.textContent = ""; }, 1500);
+    } else {
+      statusEl.textContent = "error " + r.status;
+    }
+  } catch (e) {
+    statusEl.textContent = "offline";
+  }
+}
+
+document.getElementById("sendText").addEventListener("click", () => {
+  const t = textInput.value.trim();
+  if (t) push("text", t);
+});
+textInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); document.getElementById("sendText").click(); }
+});
+
+const presetsEl = document.getElementById("presets");
+PRESETS.forEach(p => {
+  const b = document.createElement("button");
+  b.className = "bg-stone-800 border border-stone-700 text-stone-100 font-semibold py-5 rounded-xl active:scale-95 transition text-sm";
+  b.textContent = p;
+  b.addEventListener("click", () => {
+    textInput.value = p;
+    push("text", p);
+  });
+  presetsEl.appendChild(b);
+});
+
+document.querySelectorAll(".countdown-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const seconds = parseInt(btn.dataset.seconds, 10);
+    const endAt = Date.now() + seconds * 1000;
+    push("countdown", String(endAt));
+  });
+});
+
+document.getElementById("clear").addEventListener("click", () => {
+  push("black", "");
+  textInput.value = "";
+});
+</script>
+</body>
+</html>

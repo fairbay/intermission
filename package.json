@@ -1,0 +1,7 @@
+{
+  "name": "intermission",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Household TV canvas. Parent-directed scenes from phone to screen.",
+  "engines": { "node": ">=18" }
+}

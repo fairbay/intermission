@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intermission · Display</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
+  body { -webkit-user-select: none; user-select: none; cursor: none; }
+  #stage {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: 4vh 4vw;
+    text-align: center;
+    color: #fafaf9;
+    font-weight: 800;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+  }
+  #stage.text { font-size: clamp(120px, 18vw, 500px); }
+  #stage.countdown { font-size: clamp(160px, 24vw, 700px); font-variant-numeric: tabular-nums; }
+  #stage.black { font-size: 0; }
+</style>
+</head>
+<body>
+<div id="stage" class="black"></div>
+<script>
+const stage = document.getElementById("stage");
+let lastTs = 0;
+let currentMode = "black";
+let countdownEnd = 0;
+let countdownRAF = 0;
+
+function renderCountdown() {
+  const ms = Math.max(0, countdownEnd - Date.now());
+  const total = Math.ceil(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  stage.textContent = m > 0 ? `${m}:${String(s).padStart(2, "0")}` : String(s);
+  if (ms <= 0) {
+    stage.textContent = "TIME";
+    cancelAnimationFrame(countdownRAF);
+    return;
+  }
+  countdownRAF = requestAnimationFrame(renderCountdown);
+}
+
+function apply(state) {
+  if (!state || state.ts === lastTs) return;
+  lastTs = state.ts || 0;
+  cancelAnimationFrame(countdownRAF);
+
+  currentMode = state.mode;
+  stage.className = state.mode;
+
+  if (state.mode === "text") {
+    stage.textContent = String(state.payload || "").toUpperCase();
+  } else if (state.mode === "countdown") {
+    countdownEnd = parseInt(state.payload, 10) || 0;
+    renderCountdown();
+  } else {
+    stage.textContent = "";
+  }
+}
+
+async function poll() {
+  try {
+    const r = await fetch("/api/state", { cache: "no-store" });
+    if (r.ok) apply(await r.json());
+  } catch (e) {}
+}
+
+setInterval(poll, 500);
+poll();
+
+// keep TV from sleeping (best-effort)
+if ("wakeLock" in navigator) {
+  navigator.wakeLock.request("screen").catch(()=>{});
+}
+// meta-refresh fallback
+setTimeout(() => location.reload(), 1000 * 60 * 30);
+</script>
+</body>
+</html>
