@@ -1,7 +1,10 @@
 {
   "name": "intermission",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Household TV canvas. Parent-directed scenes from phone to screen.",
-  "engines": { "node": ">=18" }
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@upstash/redis": "^1.34.3"
+  }
 }

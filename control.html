@@ -7,6 +7,13 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   body { -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+  details[open] > summary .chev { transform: rotate(90deg); }
+  .chev { transition: transform 0.15s; }
+  input[type="number"] { -moz-appearance: textfield; }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 </style>
 </head>
 <body class="bg-stone-900 text-stone-100 min-h-screen p-4 pb-24">
@@ -46,65 +53,141 @@
   </section>
 
   <!-- Clear -->
-  <section class="pt-2">
+  <section class="pt-1">
     <button id="clear" class="w-full bg-stone-950 border-2 border-stone-700 text-stone-300 font-semibold text-lg py-5 rounded-xl active:scale-95 transition">
       ● Clear (black screen)
     </button>
   </section>
 
-  <p class="text-center text-stone-600 text-xs pt-4">TV updates in &lt;1s · Tap text to reuse</p>
+  <!-- Autopilot -->
+  <details class="bg-stone-800/50 border border-stone-700 rounded-2xl overflow-hidden">
+    <summary class="px-5 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span id="autopilotIndicator" class="w-2.5 h-2.5 rounded-full bg-stone-600"></span>
+        <span class="text-stone-100 font-semibold">Autopilot</span>
+      </div>
+      <span id="autopilotStatus" class="text-xs text-stone-400">off</span>
+      <span class="chev text-stone-500">›</span>
+    </summary>
+    <div class="px-5 pb-5 pt-2 space-y-5 border-t border-stone-700">
+
+      <!-- Toggle -->
+      <div class="flex items-center justify-between">
+        <span class="text-stone-200">Enabled</span>
+        <button id="enabledToggle" class="relative w-14 h-8 bg-stone-700 rounded-full transition">
+          <span id="enabledKnob" class="absolute top-1 left-1 w-6 h-6 bg-stone-300 rounded-full transition"></span>
+        </button>
+      </div>
+
+      <!-- Gap between breaks -->
+      <div class="space-y-2">
+        <label class="text-xs uppercase tracking-wide text-stone-400">Gap between breaks (minutes)</label>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <span class="text-xs text-stone-500">min</span>
+            <input id="gapMin" type="number" min="1" max="1440" step="1"
+              class="w-full bg-stone-900 text-stone-100 text-lg rounded-xl px-3 py-3 border border-stone-700 focus:border-amber-500 focus:outline-none">
+          </div>
+          <div>
+            <span class="text-xs text-stone-500">max</span>
+            <input id="gapMax" type="number" min="1" max="1440" step="1"
+              class="w-full bg-stone-900 text-stone-100 text-lg rounded-xl px-3 py-3 border border-stone-700 focus:border-amber-500 focus:outline-none">
+          </div>
+        </div>
+        <p class="text-xs text-stone-500">Random gap each cycle. Set min=max for fixed timing.</p>
+      </div>
+
+      <!-- Break duration -->
+      <div class="space-y-2">
+        <label class="text-xs uppercase tracking-wide text-stone-400">Break duration (seconds)</label>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <span class="text-xs text-stone-500">min</span>
+            <input id="durMin" type="number" min="2" max="600" step="1"
+              class="w-full bg-stone-900 text-stone-100 text-lg rounded-xl px-3 py-3 border border-stone-700 focus:border-amber-500 focus:outline-none">
+          </div>
+          <div>
+            <span class="text-xs text-stone-500">max</span>
+            <input id="durMax" type="number" min="2" max="600" step="1"
+              class="w-full bg-stone-900 text-stone-100 text-lg rounded-xl px-3 py-3 border border-stone-700 focus:border-amber-500 focus:outline-none">
+          </div>
+        </div>
+      </div>
+
+      <!-- Preset pool -->
+      <div class="space-y-2">
+        <label class="text-xs uppercase tracking-wide text-stone-400">Pool (autopilot picks randomly)</label>
+        <div id="poolChips" class="flex flex-wrap gap-2"></div>
+        <div class="flex gap-2">
+          <input id="poolNew" type="text" maxlength="40" placeholder="add custom…"
+            class="flex-1 bg-stone-900 text-stone-100 rounded-xl px-3 py-2 border border-stone-700 focus:border-amber-500 focus:outline-none text-sm">
+          <button id="poolAdd" class="bg-stone-700 text-stone-100 px-4 rounded-xl text-sm active:scale-95 transition">Add</button>
+        </div>
+      </div>
+
+      <!-- Save -->
+      <button id="saveSchedule" class="w-full bg-amber-500 text-stone-900 font-semibold text-lg py-4 rounded-xl active:scale-95 transition">
+        Save autopilot settings
+      </button>
+
+      <!-- Live status -->
+      <div id="autopilotLive" class="text-center text-stone-400 text-sm pt-2 border-t border-stone-700"></div>
+
+    </div>
+  </details>
+
+  <p id="footer" class="text-center text-stone-600 text-xs pt-4">TV updates in &lt;1s</p>
 </div>
 
 <script>
 const PRESETS = [
-  "3 MORE BITES",
-  "EYES UP",
-  "SHOES ON",
-  "CLEAN UP",
-  "DANCE BREAK",
-  "TEETH TIME",
-  "ALL DONE",
-  "PAUSE"
+  "3 MORE BITES", "EYES UP", "SHOES ON", "CLEAN UP",
+  "DANCE BREAK", "TEETH TIME", "ALL DONE", "PAUSE"
 ];
 
-const statusEl = document.getElementById("status");
-const textInput = document.getElementById("textInput");
+const $ = id => document.getElementById(id);
+const statusEl = $("status");
+const textInput = $("textInput");
 
-async function push(mode, payload) {
+// --- Manual scene push ---
+async function postAction(body) {
   statusEl.textContent = "sending…";
   try {
     const r = await fetch("/api/state", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ mode, payload })
+      body: JSON.stringify(body)
     });
     if (r.ok) {
-      statusEl.textContent = "✓ on TV";
-      setTimeout(() => { statusEl.textContent = ""; }, 1500);
+      statusEl.textContent = "✓";
+      setTimeout(() => { statusEl.textContent = ""; }, 1200);
+      return await r.json();
     } else {
-      statusEl.textContent = "error " + r.status;
+      statusEl.textContent = "err " + r.status;
     }
   } catch (e) {
     statusEl.textContent = "offline";
   }
+  return null;
 }
 
-document.getElementById("sendText").addEventListener("click", () => {
+$("sendText").addEventListener("click", () => {
   const t = textInput.value.trim();
-  if (t) push("text", t);
+  if (t) postAction({ action: "scene", mode: "text", payload: t });
 });
 textInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") { e.preventDefault(); document.getElementById("sendText").click(); }
+  if (e.key === "Enter") { e.preventDefault(); $("sendText").click(); }
 });
 
-const presetsEl = document.getElementById("presets");
+// Render manual presets
+const presetsEl = $("presets");
 PRESETS.forEach(p => {
   const b = document.createElement("button");
   b.className = "bg-stone-800 border border-stone-700 text-stone-100 font-semibold py-5 rounded-xl active:scale-95 transition text-sm";
   b.textContent = p;
   b.addEventListener("click", () => {
     textInput.value = p;
-    push("text", p);
+    postAction({ action: "scene", mode: "text", payload: p });
   });
   presetsEl.appendChild(b);
 });
@@ -113,14 +196,167 @@ document.querySelectorAll(".countdown-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     const seconds = parseInt(btn.dataset.seconds, 10);
     const endAt = Date.now() + seconds * 1000;
-    push("countdown", String(endAt));
+    postAction({ action: "scene", mode: "countdown", payload: String(endAt) });
   });
 });
 
-document.getElementById("clear").addEventListener("click", () => {
-  push("black", "");
+$("clear").addEventListener("click", () => {
+  postAction({ action: "clear" });
   textInput.value = "";
 });
+
+// --- Autopilot ---
+let pool = [];           // current pool (strings)
+let scheduleEnabled = false;
+
+function renderToggle() {
+  const knob = $("enabledKnob");
+  const toggle = $("enabledToggle");
+  if (scheduleEnabled) {
+    toggle.classList.remove("bg-stone-700"); toggle.classList.add("bg-amber-500");
+    knob.style.left = "auto"; knob.style.right = "0.25rem";
+    knob.classList.remove("bg-stone-300"); knob.classList.add("bg-stone-900");
+  } else {
+    toggle.classList.add("bg-stone-700"); toggle.classList.remove("bg-amber-500");
+    knob.style.left = "0.25rem"; knob.style.right = "auto";
+    knob.classList.add("bg-stone-300"); knob.classList.remove("bg-stone-900");
+  }
+}
+$("enabledToggle").addEventListener("click", () => {
+  scheduleEnabled = !scheduleEnabled;
+  renderToggle();
+});
+
+function renderPool() {
+  const el = $("poolChips");
+  el.innerHTML = "";
+  if (pool.length === 0) {
+    el.innerHTML = '<p class="text-xs text-stone-500 italic">Empty pool — autopilot won\'t fire. Add at least one.</p>';
+  }
+  pool.forEach((p, i) => {
+    const chip = document.createElement("div");
+    chip.className = "inline-flex items-center gap-1 bg-stone-700 text-stone-100 rounded-full pl-3 pr-1 py-1 text-sm";
+    chip.innerHTML = `<span>${p}</span>`;
+    const x = document.createElement("button");
+    x.className = "w-6 h-6 rounded-full bg-stone-600 text-stone-300 text-xs ml-1";
+    x.textContent = "×";
+    x.addEventListener("click", () => { pool.splice(i, 1); renderPool(); });
+    chip.appendChild(x);
+    el.appendChild(chip);
+  });
+  // Quick-add suggestions for any preset not in pool
+  PRESETS.filter(p => !pool.includes(p)).forEach(p => {
+    const sug = document.createElement("button");
+    sug.className = "text-xs text-stone-400 border border-dashed border-stone-600 rounded-full px-2 py-1 active:scale-95";
+    sug.textContent = "+ " + p;
+    sug.addEventListener("click", () => { pool.push(p); renderPool(); });
+    el.appendChild(sug);
+  });
+}
+
+$("poolAdd").addEventListener("click", () => {
+  const v = $("poolNew").value.trim();
+  if (v) {
+    pool.push(v.toUpperCase());
+    $("poolNew").value = "";
+    renderPool();
+  }
+});
+
+$("saveSchedule").addEventListener("click", async () => {
+  const payload = {
+    action: "schedule",
+    schedule: {
+      enabled: scheduleEnabled,
+      gapMinSec: Math.round((Number($("gapMin").value) || 10) * 60),
+      gapMaxSec: Math.round((Number($("gapMax").value) || 20) * 60),
+      durationMinSec: Number($("durMin").value) || 8,
+      durationMaxSec: Number($("durMax").value) || 15,
+      presets: pool,
+    }
+  };
+  const r = await postAction(payload);
+  if (r && r.ok) {
+    refreshAutopilotStatus();
+  }
+});
+
+// --- Live status (polls /api/state every 3s) ---
+function fmtCountdown(ms) {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return ss === 0 ? `${m}m` : `${m}m ${ss}s`;
+}
+
+let lastSchedule = null;
+async function refreshAutopilotStatus() {
+  try {
+    const r = await fetch("/api/state", { cache: "no-store" });
+    if (!r.ok) return;
+    const s = await r.json();
+    lastSchedule = s.schedule;
+
+    // Hydrate inputs only if user hasn't started editing — i.e. on first load.
+    if (!autopilotInitialized) {
+      scheduleEnabled = !!s.schedule.enabled;
+      $("gapMin").value = Math.round(s.schedule.gapMinSec / 60);
+      $("gapMax").value = Math.round(s.schedule.gapMaxSec / 60);
+      $("durMin").value = s.schedule.durationMinSec;
+      $("durMax").value = s.schedule.durationMaxSec;
+      pool = s.schedule.presets.slice();
+      renderToggle();
+      renderPool();
+      autopilotInitialized = true;
+    }
+
+    // Status badge
+    const ind = $("autopilotIndicator");
+    const txt = $("autopilotStatus");
+    if (s.schedule.enabled) {
+      ind.classList.remove("bg-stone-600"); ind.classList.add("bg-amber-500");
+      const now = Date.now();
+      if (s.schedule.currentBreakEnd > now) {
+        txt.textContent = `● showing "${s.schedule.currentBreakText}"`;
+      } else if (s.schedule.nextFireAt > now) {
+        txt.textContent = `next in ${fmtCountdown(s.schedule.nextFireAt - now)}`;
+      } else {
+        txt.textContent = "armed";
+      }
+    } else {
+      ind.classList.remove("bg-amber-500"); ind.classList.add("bg-stone-600");
+      txt.textContent = "off";
+    }
+
+    // Live block inside drawer
+    const live = $("autopilotLive");
+    if (s.schedule.enabled) {
+      const now = Date.now();
+      if (s.schedule.currentBreakEnd > now) {
+        live.innerHTML = `<span class="text-amber-400 font-semibold">"${s.schedule.currentBreakText}"</span> showing for ${fmtCountdown(s.schedule.currentBreakEnd - now)}`;
+      } else if (s.schedule.nextFireAt > now) {
+        const range = s.schedule.gapMinSec === s.schedule.gapMaxSec
+          ? `every ${Math.round(s.schedule.gapMinSec/60)}m`
+          : `every ${Math.round(s.schedule.gapMinSec/60)}–${Math.round(s.schedule.gapMaxSec/60)}m`;
+        live.innerHTML = `Next break in <span class="text-amber-400 font-semibold">${fmtCountdown(s.schedule.nextFireAt - now)}</span> · ${range}`;
+      } else {
+        live.textContent = "Armed — next break computing…";
+      }
+    } else {
+      live.textContent = "Disabled. Toggle on and save to start the cycle.";
+    }
+
+    // Footer indicates persistence mode
+    $("footer").textContent = s.persistence === "kv"
+      ? "TV updates in <1s · settings saved (KV)"
+      : "TV updates in <1s · settings RESET on cold start (no KV)";
+  } catch (e) { /* offline */ }
+}
+
+let autopilotInitialized = false;
+refreshAutopilotStatus();
+setInterval(refreshAutopilotStatus, 3000);
 </script>
 </body>
 </html>

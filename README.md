@@ -1,27 +1,45 @@
 # Intermission
 
-A phone-controlled TV canvas for parent-directed engagement moments. Push big text, countdowns, and preset scenes to the TV while kids are watching — break attention gently, re-engage, then clear and let them resume.
+Phone-controlled TV canvas for parent-directed engagement moments. Push big text, countdowns, and preset scenes from your phone to your TV. Works alongside whatever your kids are watching — open the display page in the Frame's browser or AirPlay-mirror it from a spare device.
 
-**v0 scope:** text-to-TV loop, preset scene library (8 scenes), countdown timer, clear-to-black.
+**Live demo:** https://intermission-one.vercel.app/
 
-## Setup
+## What's in v0.2
 
-1. Deploy to Vercel (this repo has no build step).
-2. Open the live URL on TV and phone:
-   - **TV:** load `<url>/display.html` in the Frame's browser, or AirPlay-mirror it from a spare iPad.
-   - **Phone:** load `<url>/control.html`.
-3. Tap a preset or type text. TV updates in under a second.
+- Manual scenes: text input, 8 presets, countdown timer, clear-to-black
+- **Autopilot** — set it once, gentle interruptions on a randomized schedule
+  - Gap between breaks (min/max in minutes — random within range each cycle)
+  - Break duration (min/max in seconds)
+  - Preset pool (curate which scenes autopilot can pick from)
+  - Live status: next break ETA shown on phone
+- Upstash KV persistence — settings survive cold starts
 
-## State
+## Routes
 
-v0 uses a module-level variable on the serverless function. Works perfectly for active demos but resets when the function goes cold (~15 min idle). To make state durable, add Upstash KV env vars and swap the handler in `api/state.js`.
+- `/` — landing
+- `/control.html` — phone UI (manual + autopilot config)
+- `/display.html` — TV UI (fullscreen, polls every 1s)
+- `/api/state` — GET computed scene + schedule status, POST actions
+
+## State model
+
+Single household, single state record. Manual scene overrides autopilot for 5 minutes after each push (then schedule resumes). Schedule fires on read — when GET `/api/state` is called and `nextFireAt <= now`, server picks a random preset, sets `currentBreakEnd`, computes next `nextFireAt`. No cron job needed.
+
+## Persistence
+
+Uses `@upstash/redis` with `Redis.fromEnv()`. Picks up either:
+- `KV_REST_API_URL` + `KV_REST_API_TOKEN` (Vercel Marketplace integration)
+- `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (direct Upstash dashboard)
+
+Falls back to module-level memory if neither set — works for active demo, settings reset on cold start.
+
+KV writes only happen on state transitions (autopilot fires, settings update, manual push). KV reads only on cold start. Free tier covers this 100x over.
 
 ## Design constraints
 
 - No recording, no feed, no export — ever.
-- Text defaults to 300pt+ on a 65" panel. If kids can read it from across the room without leaning in, it's not big enough.
-- Source takeover is the primary pause mechanism (v1.5).
-- Scene library leans playful, not policing.
+- Text defaults to 300pt+ on a 65" panel.
+- Source takeover for true pause is v1.5 (requires SmartThings).
 
 ## License
 
