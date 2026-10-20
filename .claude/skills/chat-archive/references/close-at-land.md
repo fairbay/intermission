@@ -105,6 +105,18 @@ Order matters: draft first, then the owner task, so the line names a real number
    plus the suites MBN CLAUDE.md names for app, test or data changes). Any
    failure: stop, the PR stays a draft, fix it.
 
+   **Policy check, every repo with a `.claude/policy.json`** (decision routing,
+   `docs/decision-routing/DESIGN.md` §5): `node .claude/skills/chat-archive/scripts/policy-check.mjs`
+   exits 0 — the policy parses, every `policy:` pointer names a class and a route its
+   sentence names, no rule sentence routes work to Baylee uncited (S7), and the entry hook
+   cuts nothing of the handoff with a worst-case PR table (S8). A repo's `pre_ready` names
+   it; where it does not, run it here anyway. It runs before the close-at-land commit, so
+   nothing lands on the branch after the trailer. An S8 failure means `next:` is a backlog:
+   keep 3-5 items and park the rest with a location (`references/handoff-schema.md`). On a
+   red S7 or S8, prose and policy both bind and the stricter reading wins. **Backstop:** the
+   handoff is not pushed while `python3 .claude/skills/session-start/scripts/session_handoff.py measure`
+   exits 1, in any repo, whatever its `pre_ready` says.
+
    **Size gate, every repo, policy or not** (2026-10-13: MBN #361 went up at
    14,686 added lines, 13,687 of them two JSON files of working output). Read
    `git diff --shortstat origin/main...HEAD` and the largest added files
