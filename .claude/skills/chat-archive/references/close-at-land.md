@@ -189,9 +189,13 @@ Order matters: draft first, then the owner task, so the line names a real number
    or a ruling read past its plain words keeps the tap (`policy: direction`,
    `policy: owner_context`).
    When the session has nothing else ongoing or planned, ask "Archive now?"
-   after the merge instead. In a Code session the auto-mode classifier may
-   refuse the merge call: the refusal falls back to the tap, is counted in the
-   session record (signal S2), and is never re-worded mid-session.
+   after the merge instead. The auto-mode classifier may refuse the merge
+   call (Code sessions, and chat sessions with repos attached: observed
+   2026-10-20, MBN #391): the refusal falls back to the tap, is counted in the
+   session record (signal S2), and is never re-worded mid-session. The
+   fallback tap is the table's question, so when nothing else is planned it
+   is "Merge and archive", pre-selected — never a bare "merge" followed by a
+   second question for the archive (2026-10-20: it cost Baylee a turn).
 
    **A green non-major bot PR rides in the same question.** When the gate shows
    a G9 row (Dependabot, green, no major bump), fold it into this session's one
